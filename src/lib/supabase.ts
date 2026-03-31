@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// On ajoute "as string" pour rassurer TypeScript
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string)
+const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string)
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error("Attention : Les variables d'environnement Supabase sont manquantes !")
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
