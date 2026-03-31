@@ -5,7 +5,7 @@ import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
-// import { AdminFAB } from './components/AdminFAB'; // <-- Si c'est lui qui affichait le bouton, on le retire ou on le vérifie
+import { AdminFAB } from './components/AdminFAB';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { Cart } from './pages/Cart';
@@ -59,9 +59,7 @@ export default function App() {
                   <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
               </main>
-              
-              {/* J'ai retiré <AdminFAB /> ici. Si le bouton "soleil" disparaît, c'était lui ! */}
-              
+              <AdminFAB />
               <Footer />
             </div>
           </Router>
