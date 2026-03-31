@@ -1,8 +1,8 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';;
+import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
-import { Star, Shield, Palette, Globe, Heart, Trash2 } from 'lucide-react';
+import { Star, Shield, Palette, Globe, Heart } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -85,15 +85,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, showRemove })
               <div className="space-y-3 text-[11px] uppercase tracking-[0.2em]">
                 <div className="flex items-center gap-2">
                   <Shield size={14} className="text-gold" />
-                  <span className="opacity-80">{product.warranty ? "Garantie Internationale" : "Sans Garantie"}</span>
+                  {/* SÉCURITÉ : On vérifie si la garantie existe */}
+                  <span className="opacity-80">{product.warranty ? "Garantie Internationale" : "Garantie Standard"}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Palette size={14} className="text-gold" />
-                  <span className="opacity-80">{product.colors.join(', ')}</span>
+                  {/* SÉCURITÉ : Le ?. empêche le crash si colors est vide */}
+                  <span className="opacity-80">{product.colors?.join(', ') || "Acier Inoxydable"}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Globe size={14} className="text-gold" />
-                  <span className="opacity-80">Origine: {product.origin}</span>
+                  <span className="opacity-80">Origine: {product.origin || "Suisse"}</span>
                 </div>
               </div>
               <p className="mt-6 text-[10px] leading-relaxed italic opacity-60 line-clamp-4">{product.description}</p>
@@ -102,7 +104,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, showRemove })
         </AnimatePresence>
       </div>
 
-      {/* Info */}
+      {/* Info Section */}
       <div className="p-6">
         <div className="flex justify-between items-start mb-4">
           <div>
@@ -121,7 +123,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, showRemove })
         
         <div className="flex justify-between items-center mt-auto pt-4 border-t border-zinc-100 dark:border-white/5">
           <div className="flex flex-col">
-            <span className="font-mono text-lg tracking-tighter">{product.price.toLocaleString()} FCFA</span>
+            <span className="font-mono text-lg tracking-tighter">
+              {product.price ? product.price.toLocaleString() : "---"} FCFA
+            </span>
             {showRemove && (
               <button
                 onClick={(e) => {
