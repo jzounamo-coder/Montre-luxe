@@ -51,7 +51,7 @@ export const AdminDashboard = () => {
     };
 
     const method = editingProduct?._id ? 'PUT' : 'POST';
-    const url = editingProduct?._id ? `/api/products/${editingProduct._id}` : '/api/products';
+    const url = editingProduct?._id ? `/api/Product/${editingProduct._id}` : '/api/Product';
 
     await fetch(url, {
       method,

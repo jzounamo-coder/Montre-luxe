@@ -32,7 +32,7 @@ async function initDb() {
       role TEXT DEFAULT 'user'
     );
 
-    CREATE TABLE IF NOT EXISTS products (
+    CREATE TABLE IF NOT EXISTS Product (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       description TEXT NOT NULL,
@@ -54,17 +54,17 @@ async function initDb() {
 
     CREATE TABLE IF NOT EXISTS favorites (
       userId INTEGER,
-      productId INTEGER,
+      ProductId INTEGER,
       FOREIGN KEY(userId) REFERENCES users(id),
-      FOREIGN KEY(productId) REFERENCES products(id),
-      PRIMARY KEY(userId, productId)
+      FOREIGN KEY(ProductId) REFERENCES Product(id),
+      PRIMARY KEY(userId, ProductId)
     );
   `);
 
-  const productCount = await db.get('SELECT COUNT(*) as count FROM products');
-  if (productCount.count < 30) {
+  const ProductCount = await db.get('SELECT COUNT(*) as count FROM Product');
+  if (ProductCount.count < 30) {
     console.log("Re-seeding products for Élégance Montre...");
-    await db.run('DELETE FROM products');
+    await db.run('DELETE FROM Product');
     const initialProducts = [
       {
         name: "Rolex Submariner Style",
@@ -310,7 +310,7 @@ async function initDb() {
 
     for (const p of initialProducts) {
       await db.run(
-        `INSERT INTO products (name, description, price, category, collectionType, functionType, gender, condition, image, stock, warranty, colors, origin, history) 
+        `INSERT INTO Product (name, description, price, category, collectionType, functionType, gender, condition, image, stock, warranty, colors, origin, history) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [p.name, p.description, p.price, p.category, p.collectionType, p.functionType, p.gender, p.condition, p.image, p.stock, p.warranty, p.colors, p.origin, p.history]
       );
@@ -377,38 +377,38 @@ app.get("/api/products", async (req, res) => {
     });
     res.json(mappedProducts);
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch products" });
+    res.status(500).json({ message: "Failed to fetch Product" });
   }
 });
 
-app.post("/api/products", authenticate, isAdmin, async (req, res) => {
+app.post("/api/Product", authenticate, isAdmin, async (req, res) => {
   const p = req.body;
   const result = await db.run(
-    `INSERT INTO products (name, description, price, category, collectionType, functionType, gender, condition, image, stock, warranty, colors, origin, history) 
+    `INSERT INTO Product (name, description, price, category, collectionType, functionType, gender, condition, image, stock, warranty, colors, origin, history) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [p.name, p.description, p.price, p.category, p.collectionType, p.functionType, p.gender, p.condition, p.image, p.stock, p.warranty ? 1 : 0, JSON.stringify(p.colors), p.origin, p.history]
   );
   res.status(201).json({ ...p, _id: result.lastID.toString() });
 });
 
-app.put("/api/products/:id", authenticate, isAdmin, async (req, res) => {
+app.put("/api/Product/:id", authenticate, isAdmin, async (req, res) => {
   const p = req.body;
   await db.run(
-    `UPDATE products SET name=?, description=?, price=?, category=?, collectionType=?, functionType=?, gender=?, condition=?, image=?, stock=?, warranty=?, colors=?, origin=?, history=? WHERE id=?`,
+    `UPDATE Product SET name=?, description=?, price=?, category=?, collectionType=?, functionType=?, gender=?, condition=?, image=?, stock=?, warranty=?, colors=?, origin=?, history=? WHERE id=?`,
     [p.name, p.description, p.price, p.category, p.collectionType, p.functionType, p.gender, p.condition, p.image, p.stock, p.warranty ? 1 : 0, JSON.stringify(p.colors), p.origin, p.history, req.params.id]
   );
   res.json({ ...p, _id: req.params.id });
 });
 
-app.delete("/api/products/:id", authenticate, isAdmin, async (req, res) => {
-  await db.run('DELETE FROM products WHERE id = ?', [req.params.id]);
+app.delete("/api/Product/:id", authenticate, isAdmin, async (req, res) => {
+  await db.run('DELETE FROM Product WHERE id = ?', [req.params.id]);
   res.json({ message: "Product deleted" });
 });
 
 app.get("/api/favorites", authenticate, async (req: any, res) => {
   try {
     const favorites = await db.all(
-      `SELECT p.* FROM products p JOIN favorites f ON p.id = f.productId WHERE f.userId = ?`,
+      `SELECT p.* FROM Product p JOIN favorites f ON p.id = f.productId WHERE f.userId = ?`,
       [req.user.id]
     );
     const mappedFavorites = favorites.map((p: any) => {

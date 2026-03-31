@@ -19,23 +19,23 @@ async function transfererDonnees() {
     console.log("🚀 Tentative de connexion avec configOverride...");
     
     // On récupère les données de SQLite
-    const products = db.prepare('SELECT * FROM Product').all();
+    const Product = db.prepare('SELECT * FROM Product').all();
 
-    console.log(`📦 ${products.length} montres trouvées. Transfert en cours...`);
+    console.log(`📦 ${Product.length} montres trouvées. Transfert en cours...`);
 
-    for (const product of products) {
+    for (const Product of Product) {
       await prisma.product.create({
         data: {
-          name: product.name,
-          description: product.description || "",
-          price: parseFloat(product.price),
-          image: product.image || "",
-          category: product.category || "Luxury",
-          gender: product.gender || "Men",
-          stock: parseInt(product.stock) || 0,
+          name: Product.name,
+          description: Product.description || "",
+          price: parseFloat(Product.price),
+          image: Product.image || "",
+          category: Product.category || "Luxury",
+          gender: Product.gender || "Men",
+          stock: parseInt(Product.stock) || 0,
         }
       });
-      console.log(`✅ Transféré : ${product.name}`);
+      console.log(`✅ Transféré : ${Product.name}`);
     }
 
     console.log("\n✨ Victoire ! Tes montres sont sur Supabase.");
