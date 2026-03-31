@@ -26,13 +26,12 @@ export const Home = () => {
       try {
         setLoading(true);
         const { data, error } = await supabase
-          .from('Product') // Assure-toi que le nom de ta table est bien 'products'
+          .from('products') // Assure-toi que le nom de ta table est bien 'products'
           .select('*');
 
         if (error) throw error;
 
         if (data) {
-
           // On s'assure que chaque produit a un _id (pour compatibilité avec ton interface Product)
           const formattedData = data.map((p: any) => ({
             ...p,
@@ -81,7 +80,6 @@ export const Home = () => {
         if (catalog) catalog.scrollIntoView({ behavior: 'smooth' });
       }, 100);
     } else {
-      
       // Réinitialisation si pas de recherche
       setSearchTerm('');
       setFilters({ category: '', gender: '', functionType: '' });
