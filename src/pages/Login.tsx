@@ -3,36 +3,36 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion'; 
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react'; // Import de l'icône de chargement
 
 export const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // État pour le chargement
   
-  // On récupère login et register depuis le context
   const { login, register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true); // Active le loader
     
     try {
       if (isLogin) {
-        // CONNEXION : On appelle la fonction du context qui gère déjà Supabase
         await login(email, password);
-        navigate('/'); // Redirection après succès
+        navigate('/'); 
       } else {
-        // INSCRIPTION : On appelle la fonction register du context
         await register(email, password);
-        setIsLogin(true); // Basculer vers l'écran de connexion après inscription
+        setIsLogin(true); 
       }
     } catch (err: any) {
-      // Les erreurs sont déjà affichées par les toasts dans le context, 
-      // mais on peut aussi les afficher localement si besoin
       const errorMessage = err.message || "Une erreur est survenue";
       setError(errorMessage);
+    } finally {
+      setIsLoading(false); // Désactive le loader quoi qu'il arrive
     }
   };
 
@@ -54,9 +54,10 @@ export const Login = () => {
             <input 
               type="email" 
               required
+              disabled={isLoading}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-transparent border-b border-zinc-200 dark:border-zinc-800 py-2 focus:border-gold outline-none transition-colors"
+              className="w-full bg-transparent border-b border-zinc-200 dark:border-zinc-800 py-2 focus:border-gold outline-none transition-colors disabled:opacity-50"
             />
           </div>
           <div>
@@ -64,23 +65,36 @@ export const Login = () => {
             <input 
               type="password" 
               required
+              disabled={isLoading}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-transparent border-b border-zinc-200 dark:border-zinc-800 py-2 focus:border-gold outline-none transition-colors"
+              className="w-full bg-transparent border-b border-zinc-200 dark:border-zinc-800 py-2 focus:border-gold outline-none transition-colors disabled:opacity-50"
             />
           </div>
 
           {error && <p className="text-red-500 text-[10px] uppercase tracking-widest text-center">{error}</p>}
 
-          <button type="submit" className="w-full luxury-button mt-4">
-            {isLogin ? 'Se Connecter' : "S'inscrire"}
+          <button 
+            type="submit" 
+            disabled={isLoading}
+            className="w-full luxury-button mt-4 flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="animate-spin" size={16} />
+                <span>TRAITEMENT...</span>
+              </>
+            ) : (
+              isLogin ? 'SE CONNECTER' : "S'INSCRIRE"
+            )}
           </button>
         </form>
 
         <div className="mt-8 text-center">
           <button 
             onClick={() => setIsLogin(!isLogin)}
-            className="text-[10px] uppercase tracking-widest text-zinc-500 hover:text-gold transition-colors"
+            disabled={isLoading}
+            className="text-[10px] uppercase tracking-widest text-zinc-500 hover:text-gold transition-colors disabled:opacity-50"
           >
             {isLogin ? "Pas encore de compte ? S'inscrire" : "Déjà un compte ? Se connecter"}
           </button>
