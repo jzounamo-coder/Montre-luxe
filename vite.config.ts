@@ -15,9 +15,13 @@ export default defineConfig(({mode}) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    // Configuration pour s'assurer que Netlify trouve bien les fichiers compilés
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+    },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
     },
   };
