@@ -3,15 +3,15 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion'; 
 import { toast } from 'sonner';
-import { supabase } from '../lib/supabase'; 
-
 
 export const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  
+  // On récupère login et register depuis le context
+  const { login, register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,35 +20,19 @@ export const Login = () => {
     
     try {
       if (isLogin) {
-        // CONNEXION
-        const { data, error: authError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (authError) throw authError;
-
-        if (data.session) {
-          login(data.session.access_token, 'user', data.user.email);
-          toast.success("Heureux de vous revoir chez Élégance !");
-          navigate('/');
-        }
+        // CONNEXION : On appelle la fonction du context qui gère déjà Supabase
+        await login(email, password);
+        navigate('/'); // Redirection après succès
       } else {
-        // INSCRIPTION
-        const { data, error: authError } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-
-        if (authError) throw authError;
-
-        toast.success('Inscription réussie ! Vous pouvez maintenant vous connecter.');
-        setIsLogin(true);
+        // INSCRIPTION : On appelle la fonction register du context
+        await register(email, password);
+        setIsLogin(true); // Basculer vers l'écran de connexion après inscription
       }
     } catch (err: any) {
+      // Les erreurs sont déjà affichées par les toasts dans le context, 
+      // mais on peut aussi les afficher localement si besoin
       const errorMessage = err.message || "Une erreur est survenue";
       setError(errorMessage);
-      toast.error(errorMessage);
     }
   };
 
