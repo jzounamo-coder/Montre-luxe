@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { toast } from 'sonner';
-import { supabase } from '../lib/supabase'; // Importation de ton client Supabase
+import { supabase } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>; // Changé pour gérer la vraie connexion
-  register: (email: string, password: string) => Promise<void>; // Ajout de l'inscription
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -22,100 +22,105 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [favorites, setFavorites] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Charger les favoris depuis SUPABASE au démarrage ou à la connexion
+  const fetchUserFavorites = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('Favorite')
+      .select('product_id')
+      .eq('user_id', userId);
+    
+    if (!error && data) {
+      setFavorites(data.map(f => f.product_id));
+    }
+  };
+
   useEffect(() => {
-    // 1. Vérifier la session active au chargement
     const initAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const userData: User = {
+        setUser({
           token: session.access_token,
           email: session.user.email || '',
-          role: session.user.email === 'jzounamo@gmail.com' ? 'admin' : 'user' // Définit ton admin ici
-        };
-        setUser(userData);
-        // Ici tu pourras charger tes favoris depuis une table Supabase plus tard
+          role: session.user.email === 'jzounamo@gmail.com' ? 'admin' : 'user'
+        });
+        await fetchUserFavorites(session.user.id); // Charger les favoris ici
       }
       setLoading(false);
     };
 
     initAuth();
 
-    // 2. Écouter les changements (Connexion/Déconnexion)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
         setUser({
           token: session.access_token,
           email: session.user.email || '',
-          role: session.user.email === 'admin@elegance.com' ? 'admin' : 'user'
+          role: session.user.email === 'jzounamo@gmail.com' ? 'admin' : 'user'
         });
+        await fetchUserFavorites(session.user.id);
       } else {
         setUser(null);
+        setFavorites([]);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fonction pour créer un compte
-  const register = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      toast.error(error.message);
-      throw error;
+  const toggleFavorite = async (productId: string) => {
+    if (!user) {
+      toast.error("Veuillez vous connecter");
+      return;
     }
-    toast.success("Compte créé ! Vérifiez vos emails (si activé).");
+
+    const { data: { user: sbUser } } = await supabase.auth.getUser();
+    if (!sbUser) return;
+
+    const isFav = favorites.includes(productId);
+
+    if (isFav) {
+      // Supprimer de Supabase
+      const { error } = await supabase
+        .from('Favorite')
+        .delete()
+        .eq('user_id', sbUser.id)
+        .eq('product_id', productId);
+      
+      if (!error) {
+        setFavorites(prev => prev.filter(id => id !== productId));
+        toast.success("Retiré de la collection");
+      }
+    } else {
+      // Ajouter dans Supabase
+      const { error } = await supabase
+        .from('Favorite')
+        .insert([{ user_id: sbUser.id, product_id: productId }]);
+      
+      if (!error) {
+        setFavorites(prev => [...prev, productId]);
+        toast.success("Ajouté à la collection");
+      }
+    }
   };
 
-  // Fonction de connexion réelle
+  const isFavorite = (productId: string) => favorites.includes(productId);
+
   const login = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      toast.error("Email ou mot de passe incorrect");
-      throw error;
-    }
-    toast.success("Heureux de vous revoir !");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  };
+
+  const register = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setFavorites([]);
-    toast.info("Déconnexion réussie");
-  };
-
-  const toggleFavorite = async (productId: string) => {
-    if (!user) {
-      toast.error("Veuillez vous connecter pour gérer vos favoris");
-      return;
-    }
-
-    // Logique temporaire des favoris (en local) en attendant ta table 'favorites' sur Supabase
-    const isFav = favorites.includes(productId.toString());
-    if (isFav) {
-      setFavorites(prev => prev.filter(id => id !== productId.toString()));
-      toast.success("Retiré de la collection");
-    } else {
-      setFavorites(prev => [...prev, productId.toString()]);
-      toast.success("Ajouté à la collection");
-    }
-  };
-
-  const isFavorite = (productId: string) => {
-    return favorites.includes(productId.toString());
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      register,
-      logout, 
-      isAuthenticated: !!user, 
-      isAdmin: user?.role === 'admin',
-      favorites,
-      toggleFavorite,
-      isFavorite
-    }}>
+    <AuthContext.Provider value={{ user, login, register, logout, isAuthenticated: !!user, isAdmin: user?.role === 'admin', favorites, toggleFavorite, isFavorite }}>
       {!loading && children}
     </AuthContext.Provider>
   );
