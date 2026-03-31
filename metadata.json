@@ -1,0 +1,7 @@
+{
+  "name": "Élégance Montre",
+  "description": "Une boutique de luxe dédiée à l'excellence horlogère au Congo, offrant une sélection raffinée de montres de prestige, de sport et de collection.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

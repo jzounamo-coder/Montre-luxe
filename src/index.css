@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", serif;
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --color-gold: #C5A059;
+  --color-gold-light: #F4EBD0;
+  --color-luxury-black: #050505;
+  --color-luxury-surface: #0D0D0D;
+  --color-luxury-navy: #001220;
+  --color-luxury-silver: #E0E0E0;
+  --color-luxury-bronze: #8C6239;
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-white text-luxury-black transition-colors duration-700;
+  }
+  
+  .dark body {
+    @apply bg-luxury-black text-luxury-silver;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-tight;
+  }
+}
+
+@layer components {
+  .luxury-card {
+    @apply bg-white dark:bg-luxury-surface border border-zinc-100 dark:border-white/5 rounded-none shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-500;
+  }
+  
+  .luxury-button {
+    @apply px-8 py-3 bg-luxury-black text-white dark:bg-gold dark:text-luxury-black font-bold uppercase tracking-[0.2em] text-[10px] transition-all duration-500 hover:opacity-90 hover:tracking-[0.3em] active:scale-95;
+  }
+
+  .gold-text {
+    @apply text-gold;
+  }
+
+  .luxury-gradient {
+    @apply bg-gradient-to-br from-luxury-black via-luxury-surface to-luxury-navy;
+  }
+}
