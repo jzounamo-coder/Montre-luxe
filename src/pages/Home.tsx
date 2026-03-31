@@ -2,16 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { Hero } from '../components/Hero';
 import { ProductCard } from '../components/ProductCard';
 import { Product } from '../types';
-import { motion } from 'motion/react';
-import { Award, Truck, ShieldCheck, Clock, Filter, Search as SearchIcon, LayoutDashboard } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Award, Truck, ShieldCheck, Clock, Search as SearchIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 export const Home = () => {
   const { isAdmin } = useAuth();
   const location = useLocation();
-  const [products, setProducts] = useState<Product[]>([]); // Renommé 'Product' en 'products' pour plus de clarté
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -32,18 +32,25 @@ export const Home = () => {
         if (error) throw error;
 
         if (data) {
-          // PROTECTION : On nettoie les données pour éviter le crash .join()
-          const formattedData = data.map((p: any) => ({
-            ...p,
-            _id: p.id || p._id, // Utilise l'ID Supabase
-            // Si ces colonnes n'existent pas ou sont vides, on met un tableau vide []
-            // C'est ce qui évite la page blanche au survol/clic
-            features: p.features || [],
-            colors: p.colors || [],
-            tags: p.tags || [],
-            // Sécurité pour l'image
-            image: p.image || 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?q=80&w=500'
-          }));
+          // PROTECTION : On nettoie les données pour éviter le crash .join() et les images cassées
+          const formattedData = data.map((p: any) => {
+            // SÉCURITÉ IMAGE : On vérifie les différents noms de colonnes et on nettoie l'URL
+            const rawImage = p.image || p.image_url || '';
+            const cleanImage = typeof rawImage === 'string' ? rawImage.trim() : '';
+
+            return {
+              ...p,
+              _id: p.id || p._id, // Utilise l'ID Supabase
+              // Si le lien ne commence pas par http ou est vide, on met l'image de secours
+              image: cleanImage.startsWith('http') 
+                ? cleanImage 
+                : 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?q=80&w=500',
+              // Sécurité pour les listes (évite le crash au survol)
+              features: p.features || [],
+              colors: p.colors || [],
+              tags: p.tags || [],
+            };
+          });
           setProducts(formattedData);
         }
       } catch (err) {
@@ -89,8 +96,8 @@ export const Home = () => {
   }, [location.search]);
 
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         p.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          p.description?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = !filters.category || p.category === filters.category;
     const matchesGender = !filters.gender || p.gender === filters.gender;
     const matchesFunction = !filters.functionType || p.functionType === filters.functionType;
