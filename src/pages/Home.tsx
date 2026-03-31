@@ -6,6 +6,7 @@ import { motion } from 'motion/react';
 import { Award, Truck, ShieldCheck, Clock, Filter, Search as SearchIcon, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 export const Home = () => {
   const { isAdmin } = useAuth();
@@ -19,14 +20,34 @@ export const Home = () => {
     functionType: '',
   });
 
-  // 1. Chargement initial des produits
+  // 1. Chargement des produits via Supabase (Correction erreur JSON)
   useEffect(() => {
-    fetch('/api/products')
-      .then(res => res.json())
-      .then(data => {
-        setProducts(data);
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('Product') // Assure-toi que le nom de ta table est bien 'products'
+          .select('*');
+
+        if (error) throw error;
+
+        if (data) {
+
+          // On s'assure que chaque produit a un _id (pour compatibilité avec ton interface Product)
+          const formattedData = data.map((p: any) => ({
+            ...p,
+            _id: p._id || p.id 
+          }));
+          setProducts(formattedData);
+        }
+      } catch (err) {
+        console.error("Erreur Supabase:", err);
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    fetchProducts();
   }, []);
 
   // 2. Synchronisation intelligente entre Recherche URL et Filtres
@@ -60,6 +81,7 @@ export const Home = () => {
         if (catalog) catalog.scrollIntoView({ behavior: 'smooth' });
       }, 100);
     } else {
+      
       // Réinitialisation si pas de recherche
       setSearchTerm('');
       setFilters({ category: '', gender: '', functionType: '' });
