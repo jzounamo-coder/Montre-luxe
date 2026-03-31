@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User } from '../types';
 import { toast } from 'sonner';
 import { supabase } from '../lib/supabase';
@@ -22,8 +22,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [favorites, setFavorites] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Charger les favoris depuis SUPABASE au démarrage ou à la connexion
-  const fetchUserFavorites = async (userId: string) => {
+  // Optimisation : Récupération des favoris sans bloquer l'UI
+  const fetchUserFavorites = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from('Favorite')
       .select('product_id')
@@ -32,32 +32,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!error && data) {
       setFavorites(data.map(f => f.product_id));
     }
-  };
+  }, []);
 
   useEffect(() => {
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setUser({
-          token: session.access_token,
-          email: session.user.email || '',
-          role: session.user.email === 'jzounamo@gmail.com' ? 'admin' : 'user'
-        });
-        await fetchUserFavorites(session.user.id); // Charger les favoris ici
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const userData: User = {
+            token: session.access_token,
+            email: session.user.email || '',
+            role: session.user.email === 'jzounamo@gmail.com' ? 'admin' : 'user'
+          };
+          setUser(userData);
+          // On lance la récupération en arrière-plan pour ne pas bloquer le chargement initial
+          fetchUserFavorites(session.user.id); 
+        }
+      } catch (err) {
+        console.error("Auth init error:", err);
+      } finally {
+        setLoading(false); // On libère l'affichage dès que la session est vérifiée
       }
-      setLoading(false);
     };
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setUser({
           token: session.access_token,
           email: session.user.email || '',
           role: session.user.email === 'jzounamo@gmail.com' ? 'admin' : 'user'
         });
-        await fetchUserFavorites(session.user.id);
+        fetchUserFavorites(session.user.id);
       } else {
         setUser(null);
         setFavorites([]);
@@ -65,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchUserFavorites]);
 
   const toggleFavorite = async (productId: string) => {
     if (!user) {
@@ -78,26 +85,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const isFav = favorites.includes(productId);
 
+    // Optimisation UI : On met à jour l'interface immédiatement (Optimistic Update)
+    const previousFavorites = [...favorites];
     if (isFav) {
-      // Supprimer de Supabase
+      setFavorites(prev => prev.filter(id => id !== productId));
+    } else {
+      setFavorites(prev => [...prev, productId]);
+    }
+
+    if (isFav) {
       const { error } = await supabase
         .from('Favorite')
         .delete()
         .eq('user_id', sbUser.id)
         .eq('product_id', productId);
       
-      if (!error) {
-        setFavorites(prev => prev.filter(id => id !== productId));
+      if (error) {
+        setFavorites(previousFavorites); // Retour arrière en cas d'erreur
+        toast.error("Erreur lors de la suppression");
+      } else {
         toast.success("Retiré de la collection");
       }
     } else {
-      // Ajouter dans Supabase
       const { error } = await supabase
         .from('Favorite')
         .insert([{ user_id: sbUser.id, product_id: productId }]);
       
-      if (!error) {
-        setFavorites(prev => [...prev, productId]);
+      if (error) {
+        setFavorites(previousFavorites); // Retour arrière en cas d'erreur
+        toast.error("Erreur lors de l'ajout");
+      } else {
         toast.success("Ajouté à la collection");
       }
     }
@@ -117,10 +134,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     await supabase.auth.signOut();
+    toast.info("Déconnexion réussie");
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isAuthenticated: !!user, isAdmin: user?.role === 'admin', favorites, toggleFavorite, isFavorite }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      register, 
+      logout, 
+      isAuthenticated: !!user, 
+      isAdmin: user?.role === 'admin', 
+      favorites, 
+      toggleFavorite, 
+      isFavorite 
+    }}>
+      {/* On n'affiche pas les enfants tant que la session initiale n'est pas vérifiée */}
       {!loading && children}
     </AuthContext.Provider>
   );
