@@ -55,7 +55,6 @@ export default function App() {
                   <Route path="/warranty" element={<Warranty />} />
                   <Route path="/water-resistance" element={<WaterResistance />} />
                   <Route path="/usage-conditions" element={<UsageConditions />} />
-                  <Route path="/my-collection" element={<MyCollection />} />
                   {/* Fallback */}
                   <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
