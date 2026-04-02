@@ -1,22 +1,53 @@
 import React from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';;
+import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export const Cart = () => {
-  const { items, updateQuantity, removeFromCart, total } = useCart();
+  const { items, updateQuantity, removeFromCart, total, clearCart } = useCart(); // Ajoute clearCart si dispo dans ton context
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!isAuthenticated) {
+      toast.error('Veuillez vous connecter pour commander');
       navigate('/login');
-    } else {
-      toast.success('Commande passée avec succès ! Merci de votre confiance.');
-      // Here you would normally call an API to create an order
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch('/api/commandes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          total: total,
+          items: items 
+        })
+      });
+
+      if (response.ok) {
+        toast.success('Commande passée avec succès ! Merci de votre confiance.');
+        
+        // On vide le panier localement après le succès
+        if (clearCart) clearCart();
+
+        // Redirection vers la page de collection pour voir le ticket
+        setTimeout(() => navigate('/my-collection'), 2000);
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Erreur lors de la validation');
+      }
+    } catch (error) {
+      console.error("Erreur checkout:", error);
+      toast.error('Le serveur ne répond pas. Veuillez réessayer.');
     }
   };
 
