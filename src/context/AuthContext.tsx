@@ -7,10 +7,9 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>; // Changé en Promise car signOut est async
+  logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  loading: boolean; // <--- AJOUTÉ : Pour supprimer le rouge dans App.tsx
   favorites: string[];
   toggleFavorite: (productId: string) => Promise<void>;
   isFavorite: (productId: string) => boolean;
@@ -23,12 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [favorites, setFavorites] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fonction pour vérifier si un email est admin
-  const checkAdmin = (email: string | undefined) => {
-    const adminEmails = ['jzounamo@gmail.com', 'admin@elegance.com'];
-    return email && adminEmails.includes(email) ? 'admin' : 'user';
-  };
-
+  // Optimisation : Récupération des favoris sans bloquer l'UI
   const fetchUserFavorites = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from('Favorite')
@@ -48,15 +42,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const userData: User = {
             token: session.access_token,
             email: session.user.email || '',
-            role: checkAdmin(session.user.email)
+            role: session.user.email === 'jzounamo@gmail.com' ? 'admin' : 'user' //met se code d'acces par defaut au pire admin@elegance.com
           };
           setUser(userData);
-          await fetchUserFavorites(session.user.id); 
+          // On lance la récupération en arrière-plan pour ne pas bloquer le chargement initial
+          fetchUserFavorites(session.user.id); 
         }
       } catch (err) {
         console.error("Auth init error:", err);
       } finally {
-        setLoading(false); 
+        setLoading(false); // On libère l'affichage dès que la session est vérifiée
       }
     };
 
@@ -67,14 +62,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser({
           token: session.access_token,
           email: session.user.email || '',
-          role: checkAdmin(session.user.email)
+          role: session.user.email === 'jzounamo@gmail.com' ? 'admin' : 'user'
         });
         fetchUserFavorites(session.user.id);
       } else {
         setUser(null);
         setFavorites([]);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -90,10 +84,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!sbUser) return;
 
     const isFav = favorites.includes(productId);
-    const previousFavorites = [...favorites];
 
+    // Optimisation UI : On met à jour l'interface immédiatement (Optimistic Update)
+    const previousFavorites = [...favorites];
     if (isFav) {
       setFavorites(prev => prev.filter(id => id !== productId));
+    } else {
+      setFavorites(prev => [...prev, productId]);
+    }
+
+    if (isFav) {
       const { error } = await supabase
         .from('Favorite')
         .delete()
@@ -101,19 +101,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('product_id', productId);
       
       if (error) {
-        setFavorites(previousFavorites);
+        setFavorites(previousFavorites); // Retour arrière en cas d'erreur
         toast.error("Erreur lors de la suppression");
       } else {
         toast.success("Retiré de la collection");
       }
     } else {
-      setFavorites(prev => [...prev, productId]);
       const { error } = await supabase
         .from('Favorite')
         .insert([{ user_id: sbUser.id, product_id: productId }]);
       
       if (error) {
-        setFavorites(previousFavorites);
+        setFavorites(previousFavorites); // Retour arrière en cas d'erreur
         toast.error("Erreur lors de l'ajout");
       } else {
         toast.success("Ajouté à la collection");
@@ -135,8 +134,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     await supabase.auth.signOut();
-    setUser(null);
-    setFavorites([]);
     toast.info("Déconnexion réussie");
   };
 
@@ -148,12 +145,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logout, 
       isAuthenticated: !!user, 
       isAdmin: user?.role === 'admin', 
-      loading, 
       favorites, 
       toggleFavorite, 
       isFavorite 
     }}>
-      {children}
+      {/* On n'affiche pas les enfants tant que la session initiale n'est pas vérifiée */}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

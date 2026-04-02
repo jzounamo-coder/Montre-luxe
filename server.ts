@@ -101,19 +101,6 @@ app.post("/api/commandes", authenticate, async (req: any, res: Response) => {
   }
 });
 
-// Récupérer l'historique des commandes de l'utilisateur connecté
-app.get("/api/commandes", authenticate, async (req: any, res: Response) => {
-  try {
-    const commandes = await prisma.commande.findMany({
-      where: { userId: req.user.id },
-      orderBy: { createdAt: 'desc' } // Les plus récentes en premier
-    });
-    res.json(commandes);
-  } catch (err) {
-    res.status(500).json({ message: "Impossible de récupérer vos commandes" });
-  }
-});
-
 // --- DÉMARRAGE ---
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
