@@ -42,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const userData: User = {
             token: session.access_token,
             email: session.user.email || '',
-            role: session.user.email === 'jzounamo@gmail.com' ? 'admin' : 'user' //met se code d'acces par defaut au pire admin@elegance.com
+            role: session.user.email === 'admin@gmail.com' ? 'admin' : 'user' //met se code d'acces par defaut au pire admin@elegance.com
           };
           setUser(userData);
           // On lance la récupération en arrière-plan pour ne pas bloquer le chargement initial
