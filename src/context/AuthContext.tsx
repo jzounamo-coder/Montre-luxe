@@ -22,12 +22,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [favorites, setFavorites] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Optimisation : Récupération des favoris sans bloquer l'UI
-  const fetchUserFavorites = useCallback(async (userId: string) => {
+  // Utilisation de l'email pour correspondre à ta table Supabase
+  const fetchUserFavorites = useCallback(async (email: string) => {
     const { data, error } = await supabase
       .from('Favorite')
       .select('product_id')
-      .eq('user_id', userId);
+      .eq('user_id', email); // On filtre par email comme dans ta table
     
     if (!error && data) {
       setFavorites(data.map(f => f.product_id));
@@ -39,19 +39,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
+          const userEmail = session.user.email || '';
           const userData: User = {
             token: session.access_token,
-            email: session.user.email || '',
-            role: session.user.email === 'admin@gmail.com' ? 'admin' : 'user' //met se code d'acces par defaut au pire admin@elegance.com
+            email: userEmail,
+            // Sécurité Admin mise à jour
+            role: (userEmail === 'admin@gmail.com' || userEmail === 'admin@elegance.com') ? 'admin' : 'user'
           };
           setUser(userData);
-          // On lance la récupération en arrière-plan pour ne pas bloquer le chargement initial
-          fetchUserFavorites(session.user.id); 
+          fetchUserFavorites(userEmail); 
         }
       } catch (err) {
         console.error("Auth init error:", err);
       } finally {
-        setLoading(false); // On libère l'affichage dès que la session est vérifiée
+        setLoading(false);
       }
     };
 
@@ -59,12 +60,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
+        const userEmail = session.user.email || '';
         setUser({
           token: session.access_token,
-          email: session.user.email || '',
-          role: session.user.email === 'admin@gmail.com' ? 'admin' : 'user'
+          email: userEmail,
+          role: (userEmail === 'admin@gmail.com' || userEmail === 'admin@elegance.com') ? 'admin' : 'user'
         });
-        fetchUserFavorites(session.user.id);
+        fetchUserFavorites(userEmail);
       } else {
         setUser(null);
         setFavorites([]);
@@ -80,13 +82,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    const { data: { user: sbUser } } = await supabase.auth.getUser();
-    if (!sbUser) return;
-
     const isFav = favorites.includes(productId);
-
-    // Optimisation UI : On met à jour l'interface immédiatement (Optimistic Update)
     const previousFavorites = [...favorites];
+
+    // Mise à jour Optimiste (Interface rapide)
     if (isFav) {
       setFavorites(prev => prev.filter(id => id !== productId));
     } else {
@@ -97,11 +96,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase
         .from('Favorite')
         .delete()
-        .eq('user_id', sbUser.id)
+        .eq('user_id', user.email) // On utilise user.email (ton texte en base)
         .eq('product_id', productId);
       
       if (error) {
-        setFavorites(previousFavorites); // Retour arrière en cas d'erreur
+        setFavorites(previousFavorites);
         toast.error("Erreur lors de la suppression");
       } else {
         toast.success("Retiré de la collection");
@@ -109,10 +108,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       const { error } = await supabase
         .from('Favorite')
-        .insert([{ user_id: sbUser.id, product_id: productId }]);
+        .insert([{ 
+            user_id: user.email, // On insère l'email
+            product_id: productId 
+        }]);
       
       if (error) {
-        setFavorites(previousFavorites); // Retour arrière en cas d'erreur
+        setFavorites(previousFavorites);
+        console.error("Détail erreur insertion:", error);
         toast.error("Erreur lors de l'ajout");
       } else {
         toast.success("Ajouté à la collection");
@@ -149,7 +152,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toggleFavorite, 
       isFavorite 
     }}>
-      {/* On n'affiche pas les enfants tant que la session initiale n'est pas vérifiée */}
       {!loading && children}
     </AuthContext.Provider>
   );
