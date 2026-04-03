@@ -1,31 +1,103 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';;
-import { Trash2, Plus, Minus, ArrowRight, ShoppingBag } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, MessageCircle, CreditCard, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { supabase } from '../lib/supabase';
 
 export const Cart = () => {
   const { items, updateQuantity, removeFromCart, total } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
-  const handleCheckout = () => {
-    if (!isAuthenticated) {
-      navigate('/login');
-    } else {
-      toast.success('Commande passée avec succès ! Merci de votre confiance.');
-      // Here you would normally call an API to create an order
+  // Configuration FedaPay
+  const fedaPayConfig = {
+    public_key: 'pk_sandbox_L5iZakQd_tp4chTEDkySrXtO',
+    transaction: {
+      amount: total,
+      description: `Commande Élégance Montre - ${user?.email}`,
+    },
+    customer: {
+      email: user?.email || '',
+      lastname: user?.email?.split('@')[0] || 'Client',
     }
   };
 
+  // --- ICI : LA FONCTION MISE À JOUR POUR TA TABLE SUPABASE ---
+  const saveOrder = async (method: string) => {
+    try {
+      const { error } = await supabase
+        .from('Commande') // Nom exact de ta table
+        .insert([{
+          userId: user?.email, // Colonne userId (vue sur ta capture)
+          total: total,        // Colonne total (vue sur ta capture)
+          statut: method === 'fedapay' ? 'payé_en_attente' : 'en_attente', // Colonne statut
+          items: items,        // Colonne items (pense à l'ajouter en type JSONB sur Supabase)
+          payment_method: method
+        }]);
+
+      if (error) {
+        console.error("Détail erreur Supabase:", error);
+        toast.error("Erreur lors de l'enregistrement de la commande.");
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error("Erreur système:", err);
+      return false;
+    }
+  };
+
+  const handleWhatsApp = async () => {
+    const success = await saveOrder('whatsapp');
+    if (!success) return;
+
+    const myPhoneNumber = "242068518085";
+    const itemsDescription = items.map(item => `• *${item.name}* (x${item.quantity})`).join('%0A');
+    const message = `*COMMANDE PRESTIGE*%0A%0AJe souhaite valider ma commande :%0A${itemsDescription}%0A%0A*TOTAL : ${total.toLocaleString()} €*`;
+    
+    window.open(`https://wa.me/${myPhoneNumber}?text=${message}`, '_blank');
+    setShowCheckoutModal(false);
+  };
+
+  const handleFedaPay = async () => {
+    const success = await saveOrder('fedapay');
+    if (!success) return;
+    
+    setShowCheckoutModal(false);
+
+    try {
+      // @ts-ignore
+      const checkout = window.FedaPay.checkout({
+        public_key: fedaPayConfig.public_key,
+        transaction: fedaPayConfig.transaction,
+        customer: fedaPayConfig.customer
+      });
+      checkout.open();
+    } catch (error) {
+      console.error("FedaPay error:", error);
+      toast.error("Le service de paiement n'a pas pu démarrer.");
+    }
+  };
+
+  const startCheckout = () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    } else {
+      setShowCheckoutModal(true);
+    }
+  };
+
+  // Affichage si panier vide
   if (items.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center pt-20 px-4">
         <ShoppingBag size={64} className="text-zinc-200 dark:text-zinc-800 mb-6" />
         <h2 className="text-3xl font-serif mb-4">Votre panier est vide</h2>
-        <p className="text-zinc-500 uppercase tracking-widest text-[10px] mb-8">Explorez nos collections pour trouver la montre de vos rêves</p>
         <Link to="/catalog" className="luxury-button">Découvrir les collections</Link>
       </div>
     );
@@ -35,37 +107,25 @@ export const Cart = () => {
     <div className="min-h-screen pt-32 pb-20">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <header className="mb-12">
-          <h1 className="text-4xl font-serif mb-2">Votre Panier</h1>
-          <p className="text-zinc-500 uppercase tracking-widest text-[10px]">{items.length} article(s) sélectionné(s)</p>
+          <h1 className="text-4xl font-serif mb-2 text-center lg:text-left">Votre Panier</h1>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2 space-y-8">
             <AnimatePresence>
               {items.map((item) => (
-                <motion.div
-                  key={item._id}
-                  layout
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="flex gap-6 p-6 luxury-card"
-                >
+                <motion.div key={item._id} layout className="flex gap-6 p-6 luxury-card">
                   <div className="w-24 h-32 flex-shrink-0">
                     <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-grow flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <h3 className="font-serif text-xl">{item.name}</h3>
-                        <button onClick={() => removeFromCart(item._id)} className="text-zinc-400 hover:text-red-500 transition-colors">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                      <p className="text-[10px] uppercase tracking-widest text-gold mt-1">{item.category}</p>
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-serif text-xl">{item.name}</h3>
+                      <button onClick={() => removeFromCart(item._id)} className="text-zinc-400 hover:text-red-500 transition-colors">
+                        <Trash2 size={18} />
+                      </button>
                     </div>
-                    
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center mt-4">
                       <div className="flex items-center border border-zinc-200 dark:border-zinc-800">
                         <button onClick={() => updateQuantity(item._id, -1)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                           <Minus size={14} />
@@ -86,37 +146,60 @@ export const Cart = () => {
           <div className="lg:col-span-1">
             <div className="luxury-card p-8 sticky top-32">
               <h3 className="font-serif text-2xl mb-8">Récapitulatif</h3>
-              <div className="space-y-4 mb-8">
-                <div className="flex justify-between text-[10px] uppercase tracking-widest text-zinc-500">
-                  <span>Sous-total</span>
-                  <span>{total.toLocaleString()} €</span>
-                </div>
-                <div className="flex justify-between text-[10px] uppercase tracking-widest text-zinc-500">
-                  <span>Livraison</span>
-                  <span>Offerte</span>
-                </div>
-                <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-between font-serif text-xl">
-                  <span>Total</span>
-                  <span className="text-gold">{total.toLocaleString()} €</span>
-                </div>
+              <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-between font-serif text-xl mb-8">
+                <span>Total</span>
+                <span className="text-gold">{total.toLocaleString()} €</span>
               </div>
-
-              <button 
-                onClick={handleCheckout}
-                className="w-full luxury-button flex items-center justify-center gap-3"
-              >
-                Passer la commande <ArrowRight size={16} />
+              <button onClick={startCheckout} className="w-full luxury-button flex items-center justify-center gap-3">
+                Finaliser la commande <ArrowRight size={16} />
               </button>
-              
-              {!isAuthenticated && (
-                <p className="mt-4 text-[10px] text-center text-zinc-500 uppercase tracking-widest">
-                  Veuillez vous connecter pour commander
-                </p>
-              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* MODALE DE CHOIX DU PAIEMENT */}
+      <AnimatePresence>
+        {showCheckoutModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-luxury-surface w-full max-w-md p-8 rounded-2xl shadow-2xl relative border border-zinc-100 dark:border-white/5"
+            >
+              <button onClick={() => setShowCheckoutModal(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-black">
+                <X size={20} />
+              </button>
+
+              <h2 className="font-serif text-2xl mb-2 text-center">Paiement</h2>
+              <p className="text-[10px] uppercase tracking-widest text-zinc-500 text-center mb-8 italic">Veuillez choisir votre mode de règlement</p>
+
+              <div className="space-y-4">
+                <button onClick={handleWhatsApp} className="w-full flex items-center gap-4 p-4 border border-zinc-100 dark:border-white/5 hover:bg-zinc-50 dark:hover:bg-white/5 transition-all group rounded-xl text-left">
+                  <div className="p-3 bg-green-500/10 text-green-500 rounded-full group-hover:scale-110 transition-transform">
+                    <MessageCircle size={24} />
+                  </div>
+                  <div>
+                    <p className="font-serif text-lg">Option Prestige (WhatsApp)</p>
+                    <p className="text-[10px] uppercase text-zinc-500">Discussion & Livraison directe</p>
+                  </div>
+                </button>
+
+                <button onClick={handleFedaPay} className="w-full flex items-center gap-4 p-4 border border-zinc-100 dark:border-white/5 hover:bg-zinc-50 dark:hover:bg-white/5 transition-all group rounded-xl text-left">
+                  <div className="p-3 bg-gold/10 text-gold rounded-full group-hover:scale-110 transition-transform">
+                    <CreditCard size={24} />
+                  </div>
+                  <div>
+                    <p className="font-serif text-lg">Paiement Mobile Money</p>
+                    <p className="text-[10px] uppercase text-zinc-500">MTN, Airtel & Cartes Bancaires</p>
+                  </div>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -96,11 +96,24 @@ export const Home = () => {
   }, [location.search]);
 
   const filteredProducts = products.filter(p => {
+    // Correction pour ignorer la casse (Majuscules/Minuscules) et gérer les traductions
     const matchesSearch = (p.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           p.description?.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = !filters.category || p.category === filters.category;
-    const matchesGender = !filters.gender || p.gender === filters.gender;
-    const matchesFunction = !filters.functionType || p.functionType === filters.functionType;
+    
+    const productCat = p.category?.toLowerCase() || '';
+    const filterCat = filters.category.toLowerCase();
+    const matchesCategory = !filterCat || 
+                           productCat === filterCat || 
+                           (filterCat === 'luxury' && productCat === 'luxe');
+
+    const productGender = p.gender?.toLowerCase() || '';
+    const filterGender = filters.gender.toLowerCase();
+    const matchesGender = !filterGender || 
+                         productGender === filterGender ||
+                         (filterGender === 'men' && (productGender === 'homme' || productGender === 'hommes')) ||
+                         (filterGender === 'women' && (productGender === 'femme' || productGender === 'femmes'));
+
+    const matchesFunction = !filters.functionType || p.functionType?.toLowerCase() === filters.functionType.toLowerCase();
     
     return matchesSearch && matchesCategory && matchesGender && matchesFunction;
   });
