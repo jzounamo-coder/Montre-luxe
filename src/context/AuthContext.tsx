@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser({
           token: session.access_token,
           email: session.user.email || '',
-          role: session.user.email === 'jzounamo@gmail.com' ? 'admin' : 'user'
+          role: session.user.email === 'admin@gmail.com' ? 'admin' : 'user'
         });
         fetchUserFavorites(session.user.id);
       } else {
