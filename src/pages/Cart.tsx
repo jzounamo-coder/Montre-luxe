@@ -36,7 +36,7 @@ export const Cart = () => {
           userId: user?.email, // Colonne userId (vue sur ta capture)
           total: total,        // Colonne total (vue sur ta capture)
           statut: method === 'fedapay' ? 'payé_en_attente' : 'en_attente', // Colonne statut
-          items: items,        // Colonne items (pense à l'ajouter en type JSONB sur Supabase)
+          items: items,        // Colonne items
           payment_method: method
         }]);
 
@@ -64,15 +64,24 @@ export const Cart = () => {
     setShowCheckoutModal(false);
   };
 
+  // --- FONCTION CORRIGÉE POUR ÉVITER L'ERREUR "NOT A FUNCTION" ---
   const handleFedaPay = async () => {
+    // On vérifie si FedaPay est bien chargé dans la fenêtre
+    const fedaPayInstance = (window as any).FedaPay;
+    
+    if (!fedaPayInstance || typeof fedaPayInstance.checkout !== 'function') {
+      toast.error("Le module de paiement charge encore... Réessayez dans une seconde.");
+      return;
+    }
+
     const success = await saveOrder('fedapay');
     if (!success) return;
     
     setShowCheckoutModal(false);
 
     try {
-      // @ts-ignore
-      const checkout = window.FedaPay.checkout({
+      // Utilisation de l'instance vérifiée
+      const checkout = fedaPayInstance.checkout({
         public_key: fedaPayConfig.public_key,
         transaction: fedaPayConfig.transaction,
         customer: fedaPayConfig.customer
