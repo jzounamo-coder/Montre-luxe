@@ -64,13 +64,23 @@ export const Cart = () => {
     setShowCheckoutModal(false);
   };
 
-  // --- FONCTION CORRIGÉE POUR ÉVITER L'ERREUR "NOT A FUNCTION" ---
+  // --- FONCTION CORRIGÉE AVEC BOUCLE D'ATTENTE ---
   const handleFedaPay = async () => {
-    // On vérifie si FedaPay est bien chargé dans la fenêtre
-    const fedaPayInstance = (window as any).FedaPay;
+    let fedaPayInstance = (window as any).FedaPay;
     
+    // Si FedaPay n'est pas encore prêt, on attend jusqu'à 3 secondes
     if (!fedaPayInstance || typeof fedaPayInstance.checkout !== 'function') {
-      toast.error("Le module de paiement charge encore... Réessayez dans une seconde.");
+      toast.info("Initialisation du paiement sécurisé...");
+      
+      for (let i = 0; i < 6; i++) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        fedaPayInstance = (window as any).FedaPay;
+        if (fedaPayInstance && typeof fedaPayInstance.checkout === 'function') break;
+      }
+    }
+
+    if (!fedaPayInstance || typeof fedaPayInstance.checkout !== 'function') {
+      toast.error("Le module de paiement n'a pas pu charger. Vérifiez votre connexion.");
       return;
     }
 
@@ -80,7 +90,6 @@ export const Cart = () => {
     setShowCheckoutModal(false);
 
     try {
-      // Utilisation de l'instance vérifiée
       const checkout = fedaPayInstance.checkout({
         public_key: fedaPayConfig.public_key,
         transaction: fedaPayConfig.transaction,
@@ -101,7 +110,6 @@ export const Cart = () => {
     }
   };
 
-  // Affichage si panier vide
   if (items.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center pt-20 px-4">
@@ -167,7 +175,6 @@ export const Cart = () => {
         </div>
       </div>
 
-      {/* MODALE DE CHOIX DU PAIEMENT */}
       <AnimatePresence>
         {showCheckoutModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
