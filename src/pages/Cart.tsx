@@ -23,7 +23,9 @@ export const Cart = () => {
     }
   };
 
+  // --- SAUVEGARDE DANS SUPABASE ---
   const saveOrder = async (method: string) => {
+    console.log("Tentative de sauvegarde Supabase pour:", method);
     try {
       const { error } = await supabase
         .from('Commande')
@@ -36,12 +38,14 @@ export const Cart = () => {
         }]);
 
       if (error) {
-        console.error("Erreur Supabase:", error);
-        toast.error("Erreur lors de l'enregistrement.");
+        console.error("Détail erreur Supabase:", error);
+        toast.error("Erreur lors de l'enregistrement de la commande.");
         return false;
       }
+      console.log("Sauvegarde réussie dans Supabase");
       return true;
     } catch (err) {
+      console.error("Erreur système Supabase:", err);
       return false;
     }
   };
@@ -49,36 +53,40 @@ export const Cart = () => {
   const handleWhatsApp = async () => {
     const success = await saveOrder('whatsapp');
     if (!success) return;
+
     const myPhoneNumber = "242068518085";
     const itemsDescription = items.map(item => `• *${item.name}* (x${item.quantity})`).join('%0A');
     const message = `*COMMANDE PRESTIGE*%0A%0AJe souhaite valider ma commande :%0A${itemsDescription}%0A%0A*TOTAL : ${total.toLocaleString()} €*`;
+    
     window.open(`https://wa.me/${myPhoneNumber}?text=${message}`, '_blank');
     setShowCheckoutModal(false);
   };
 
-  // --- NOUVELLE MÉTHODE FEDAPAY SANS BUG ---
+  // --- NOUVELLE FONCTION FEDAPAY (LIEN DIRECT) ---
   const handleFedaPay = async () => {
+    console.log("--- LANCEMENT PAIEMENT FEDAPAY (LIEN DIRECT) ---");
+    
+    // 1. Sauvegarde d'abord la commande dans Supabase
     const success = await saveOrder('fedapay');
     if (!success) return;
-
+    
     setShowCheckoutModal(false);
-    toast.loading("Redirection vers le paiement sécurisé...");
+    toast.loading("Redirection vers FedaPay...");
 
-    // On construit l'URL de paiement manuellement pour éviter les erreurs de script
-    // C'est la méthode "Link" de FedaPay
-    const baseUrl = "https://checkout.fedapay.com/";
-    const params = new URLSearchParams({
-      public_key: fedaPayConfig.public_key,
-      amount: total.toString(),
-      description: fedaPayConfig.transaction.description,
-      email: user?.email || '',
-      callback_url: window.location.origin + "/profile", // Où le client revient après
-      cancel_url: window.location.origin + "/cart",     // S'il annule
-    });
+    // 2. Construction de l'URL de paiement propre
+    const publicKey = fedaPayConfig.public_key;
+    const amount = total;
+    const description = encodeURIComponent(fedaPayConfig.transaction.description);
+    const email = encodeURIComponent(user?.email || '');
 
-    // On redirige l'utilisateur
+    // URL au format officiel FedaPay Checkout
+    const checkoutUrl = `https://checkout.fedapay.com/${publicKey}?amount=${amount}&description=${description}&customer[email]=${email}`;
+
+    console.log("Redirection vers :", checkoutUrl);
+
+    // 3. Redirection après un léger délai pour laisser le toast s'afficher
     setTimeout(() => {
-      window.location.href = `${baseUrl}${fedaPayConfig.public_key}?${params.toString()}`;
+      window.location.href = checkoutUrl;
     }, 1000);
   };
 
@@ -182,7 +190,10 @@ export const Cart = () => {
                   </div>
                 </button>
 
-                <button onClick={handleFedaPay} className="w-full flex items-center gap-4 p-4 border border-zinc-100 dark:border-white/5 hover:bg-zinc-50 dark:hover:bg-white/5 transition-all group rounded-xl text-left">
+                <button 
+                  onClick={handleFedaPay} 
+                  className="w-full flex items-center gap-4 p-4 border border-zinc-100 dark:border-white/5 hover:bg-zinc-50 dark:hover:bg-white/5 transition-all group rounded-xl text-left"
+                >
                   <div className="p-3 bg-gold/10 text-gold rounded-full group-hover:scale-110 transition-transform">
                     <CreditCard size={24} />
                   </div>
