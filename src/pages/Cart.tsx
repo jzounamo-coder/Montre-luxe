@@ -64,9 +64,8 @@ export const Cart = () => {
     setShowCheckoutModal(false);
   };
 
-  // --- FONCTION FEDAPAY OPTIMISÉE ---
+  // --- FONCTION FEDAPAY MISE À JOUR (MÉTHODE ROBUSTE) ---
   const handleFedaPay = async () => {
-    // On récupère l'objet FedaPay que ta console a bien détecté
     const fedaPayInstance = (window as any).FedaPay;
     
     if (!fedaPayInstance) {
@@ -74,29 +73,41 @@ export const Cart = () => {
       return;
     }
 
-    // On enregistre d'abord la commande dans Supabase
+    // 1. On sauvegarde d'abord la commande
     const success = await saveOrder('fedapay');
     if (!success) return;
     
     setShowCheckoutModal(false);
 
     try {
-      // On initialise le checkout
-      const checkout = fedaPayInstance.checkout({
+      // 2. On tente la méthode d'initialisation directe qui est plus stable
+      fedaPayInstance.init({
         public_key: fedaPayConfig.public_key,
         transaction: fedaPayConfig.transaction,
         customer: fedaPayConfig.customer,
         onComplete: (data: any) => {
           console.log("Paiement terminé", data);
-          toast.success("Paiement enregistré !");
+          toast.success("Commande enregistrée avec succès !");
         }
       });
-      
-      // On force l'ouverture
-      checkout.open();
+
+      // 3. On déclenche l'ouverture
+      if (typeof fedaPayInstance.open === 'function') {
+        fedaPayInstance.open();
+      } else if (typeof fedaPayInstance.checkout === 'function') {
+        fedaPayInstance.checkout().open();
+      } else {
+        // Plan B : On utilise le déclencheur par défaut du script
+        const btn = document.createElement('button');
+        btn.className = 'fedapay-checkout-button';
+        btn.style.display = 'none';
+        document.body.appendChild(btn);
+        btn.click();
+        btn.remove();
+      }
     } catch (error) {
-      console.error("FedaPay error:", error);
-      toast.error("Erreur lors de l'ouverture du module de paiement.");
+      console.error("Erreur FedaPay détaillée:", error);
+      toast.error("Le module de paiement a rencontré une erreur technique.");
     }
   };
 
