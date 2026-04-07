@@ -14,7 +14,6 @@ export const Cart = () => {
   
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
-  // Configuration FedaPay
   const fedaPayConfig = {
     public_key: 'pk_sandbox_L5iZakQd_tp4chTEDkySrXtO',
     transaction: {
@@ -27,8 +26,8 @@ export const Cart = () => {
     }
   };
 
-  // --- SAUVEGARDE DANS SUPABASE ---
   const saveOrder = async (method: string) => {
+    console.log("Tentative de sauvegarde Supabase pour:", method);
     try {
       const { error } = await supabase
         .from('Commande')
@@ -45,9 +44,10 @@ export const Cart = () => {
         toast.error("Erreur lors de l'enregistrement de la commande.");
         return false;
       }
+      console.log("Sauvegarde réussie dans Supabase");
       return true;
     } catch (err) {
-      console.error("Erreur système:", err);
+      console.error("Erreur système Supabase:", err);
       return false;
     }
   };
@@ -64,50 +64,42 @@ export const Cart = () => {
     setShowCheckoutModal(false);
   };
 
-  // --- FONCTION FEDAPAY MISE À JOUR (MÉTHODE ROBUSTE) ---
   const handleFedaPay = async () => {
+    console.log("--- BOUTON FEDAPAY CLIQUÉ ---");
     const fedaPayInstance = (window as any).FedaPay;
+    console.log("Instance FedaPay au moment du clic :", fedaPayInstance);
     
     if (!fedaPayInstance) {
-      toast.error("Le module de paiement n'est pas encore prêt. Patientez un instant.");
+      console.error("ERREUR : window.FedaPay est introuvable");
+      toast.error("Le module de paiement n'est pas chargé.");
       return;
     }
 
-    // 1. On sauvegarde d'abord la commande
     const success = await saveOrder('fedapay');
-    if (!success) return;
+    if (!success) {
+      console.log("Arrêt car échec Supabase");
+      return;
+    }
     
     setShowCheckoutModal(false);
 
     try {
-      // 2. On tente la méthode d'initialisation directe qui est plus stable
-      fedaPayInstance.init({
+      console.log("Initialisation du widget FedaPay...");
+      const checkout = fedaPayInstance.checkout({
         public_key: fedaPayConfig.public_key,
         transaction: fedaPayConfig.transaction,
         customer: fedaPayConfig.customer,
         onComplete: (data: any) => {
-          console.log("Paiement terminé", data);
-          toast.success("Commande enregistrée avec succès !");
+          console.log("Paiement terminé avec succès", data);
+          toast.success("Paiement réussi !");
         }
       });
 
-      // 3. On déclenche l'ouverture
-      if (typeof fedaPayInstance.open === 'function') {
-        fedaPayInstance.open();
-      } else if (typeof fedaPayInstance.checkout === 'function') {
-        fedaPayInstance.checkout().open();
-      } else {
-        // Plan B : On utilise le déclencheur par défaut du script
-        const btn = document.createElement('button');
-        btn.className = 'fedapay-checkout-button';
-        btn.style.display = 'none';
-        document.body.appendChild(btn);
-        btn.click();
-        btn.remove();
-      }
+      console.log("Ouverture du widget...");
+      checkout.open();
     } catch (error) {
-      console.error("Erreur FedaPay détaillée:", error);
-      toast.error("Le module de paiement a rencontré une erreur technique.");
+      console.error("CATASTROPHE FedaPay:", error);
+      toast.error("Erreur technique lors du lancement du paiement.");
     }
   };
 
@@ -211,7 +203,13 @@ export const Cart = () => {
                   </div>
                 </button>
 
-                <button onClick={handleFedaPay} className="w-full flex items-center gap-4 p-4 border border-zinc-100 dark:border-white/5 hover:bg-zinc-50 dark:hover:bg-white/5 transition-all group rounded-xl text-left">
+                <button 
+                  onClick={() => {
+                    console.log("CLIC SUR BOUTON FEDAPAY");
+                    handleFedaPay();
+                  }} 
+                  className="w-full flex items-center gap-4 p-4 border border-zinc-100 dark:border-white/5 hover:bg-zinc-50 dark:hover:bg-white/5 transition-all group rounded-xl text-left"
+                >
                   <div className="p-3 bg-gold/10 text-gold rounded-full group-hover:scale-110 transition-transform">
                     <CreditCard size={24} />
                   </div>
