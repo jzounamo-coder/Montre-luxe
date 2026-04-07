@@ -52,7 +52,7 @@ export const Cart = () => {
     setShowCheckoutModal(false);
   };
 
-  // --- FONCTION PAYSTACK CORRIGÉE ---
+  // --- FONCTION PAYSTACK (FIXÉ POUR TEST) ---
   const handlePaystack = async () => {
     console.log("--- INITIALISATION PAYSTACK ---");
     
@@ -68,17 +68,16 @@ export const Cart = () => {
     document.body.appendChild(script);
 
     script.onload = () => {
-      // FIX : On s'assure d'avoir un nombre entier pour éviter l'erreur 400
-      // 1€ ≈ 655 XAF. On multiplie par 100 car Paystack veut des centimes.
-      const amountInXAF = Math.round(total * 655);
-      const finalAmount = amountInXAF * 100;
+      // Pour débloquer le test (Erreur 400), on utilise l'USD par défaut.
+      // Paystack demande le montant en centimes (total * 100).
+      const finalAmount = Math.round(total * 100);
 
       const handler = (window as any).PaystackPop.setup({
         key: PAYSTACK_PUBLIC_KEY,
         email: user?.email || 'client@mail.com',
         amount: finalAmount, 
-        currency: 'XAF',
-        ref: 'PRESTIGE-' + Date.now(), // Référence unique basée sur le temps
+        currency: 'USD', // Passage en USD pour valider le tunnel de test
+        ref: 'PRESTIGE-' + Date.now(),
         metadata: {
           custom_fields: [
             {
@@ -94,7 +93,7 @@ export const Cart = () => {
           navigate('/profile');
         },
         onClose: () => {
-          toast.error("Paiement annulé.");
+          toast.info("Paiement annulé.");
         }
       });
       handler.openIframe();
