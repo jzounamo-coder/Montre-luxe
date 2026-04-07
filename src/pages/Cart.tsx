@@ -52,7 +52,7 @@ export const Cart = () => {
     setShowCheckoutModal(false);
   };
 
-  // --- FONCTION PAYSTACK ---
+  // --- FONCTION PAYSTACK CORRIGÉE ---
   const handlePaystack = async () => {
     console.log("--- INITIALISATION PAYSTACK ---");
     
@@ -60,23 +60,25 @@ export const Cart = () => {
     if (!success) return;
 
     setShowCheckoutModal(false);
-    toast.loading("Ouverture sécurisée...");
+    toast.loading("Connexion au guichet sécurisé...");
 
-    // On charge le script Paystack dynamiquement
     const script = document.createElement("script");
     script.src = "https://js.paystack.co/v1/inline.js";
     script.async = true;
     document.body.appendChild(script);
 
     script.onload = () => {
+      // FIX : On s'assure d'avoir un nombre entier pour éviter l'erreur 400
+      // 1€ ≈ 655 XAF. On multiplie par 100 car Paystack veut des centimes.
+      const amountInXAF = Math.round(total * 655);
+      const finalAmount = amountInXAF * 100;
+
       const handler = (window as any).PaystackPop.setup({
         key: PAYSTACK_PUBLIC_KEY,
         email: user?.email || 'client@mail.com',
-        // Conversion approximative en XAF pour le test (1€ = 655 XAF)
-        // Paystack multiplie par 100 car il compte en centimes
-        amount: total * 655 * 100, 
+        amount: finalAmount, 
         currency: 'XAF',
-        ref: 'PRESTIGE-' + Math.floor(Math.random() * 1000000000 + 1),
+        ref: 'PRESTIGE-' + Date.now(), // Référence unique basée sur le temps
         metadata: {
           custom_fields: [
             {
