@@ -14,38 +14,28 @@ export const Cart = () => {
   
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
-  // Configuration FedaPay
-  const fedaPayConfig = {
-    public_key: 'pk_sandbox_L5iZakQd_tp4chTEDkySrXtO',
-    transaction: {
-      amount: total,
-      description: `Commande Élégance Montre - ${user?.email}`,
-    }
-  };
+  // --- CONFIGURATION PAYSTACK (TEST) ---
+  const PAYSTACK_PUBLIC_KEY = "pk_test_751556b96095e7074ff1c795edaab0c084eab9b5"; 
 
-  // --- SAUVEGARDE DANS SUPABASE ---
   const saveOrder = async (method: string) => {
-    console.log("Tentative de sauvegarde Supabase pour:", method);
+    console.log("Sauvegarde de la commande Supabase...");
     try {
       const { error } = await supabase
         .from('Commande')
         .insert([{
           userId: user?.email,
           total: total,
-          statut: method === 'fedapay' ? 'payé_en_attente' : 'en_attente',
+          statut: 'en_attente',
           items: items,
           payment_method: method
         }]);
 
       if (error) {
-        console.error("Détail erreur Supabase:", error);
-        toast.error("Erreur lors de l'enregistrement de la commande.");
+        console.error("Erreur Supabase:", error);
         return false;
       }
-      console.log("Sauvegarde réussie dans Supabase");
       return true;
     } catch (err) {
-      console.error("Erreur système Supabase:", err);
       return false;
     }
   };
@@ -62,32 +52,51 @@ export const Cart = () => {
     setShowCheckoutModal(false);
   };
 
-  // --- NOUVELLE FONCTION FEDAPAY (LIEN DIRECT) ---
-  const handleFedaPay = async () => {
-    console.log("--- LANCEMENT PAIEMENT FEDAPAY (LIEN DIRECT) ---");
+  // --- FONCTION PAYSTACK ---
+  const handlePaystack = async () => {
+    console.log("--- INITIALISATION PAYSTACK ---");
     
-    // 1. Sauvegarde d'abord la commande dans Supabase
-    const success = await saveOrder('fedapay');
+    const success = await saveOrder('paystack');
     if (!success) return;
-    
+
     setShowCheckoutModal(false);
-    toast.loading("Redirection vers FedaPay...");
+    toast.loading("Ouverture sécurisée...");
 
-    // 2. Construction de l'URL de paiement propre
-    const publicKey = fedaPayConfig.public_key;
-    const amount = total;
-    const description = encodeURIComponent(fedaPayConfig.transaction.description);
-    const email = encodeURIComponent(user?.email || '');
+    // On charge le script Paystack dynamiquement
+    const script = document.createElement("script");
+    script.src = "https://js.paystack.co/v1/inline.js";
+    script.async = true;
+    document.body.appendChild(script);
 
-    // URL au format officiel FedaPay Checkout
-    const checkoutUrl = `https://checkout.fedapay.com/${publicKey}?amount=${amount}&description=${description}&customer[email]=${email}`;
-
-    console.log("Redirection vers :", checkoutUrl);
-
-    // 3. Redirection après un léger délai pour laisser le toast s'afficher
-    setTimeout(() => {
-      window.location.href = checkoutUrl;
-    }, 1000);
+    script.onload = () => {
+      const handler = (window as any).PaystackPop.setup({
+        key: PAYSTACK_PUBLIC_KEY,
+        email: user?.email || 'client@mail.com',
+        // Conversion approximative en XAF pour le test (1€ = 655 XAF)
+        // Paystack multiplie par 100 car il compte en centimes
+        amount: total * 655 * 100, 
+        currency: 'XAF',
+        ref: 'PRESTIGE-' + Math.floor(Math.random() * 1000000000 + 1),
+        metadata: {
+          custom_fields: [
+            {
+              display_name: "Email Client",
+              variable_name: "customer_email",
+              value: user?.email
+            }
+          ]
+        },
+        callback: (response: any) => {
+          console.log("Paiement réussi !", response);
+          toast.success("Paiement validé avec succès !");
+          navigate('/profile');
+        },
+        onClose: () => {
+          toast.error("Paiement annulé.");
+        }
+      });
+      handler.openIframe();
+    };
   };
 
   const startCheckout = () => {
@@ -176,8 +185,7 @@ export const Cart = () => {
                 <X size={20} />
               </button>
 
-              <h2 className="font-serif text-2xl mb-2 text-center">Paiement</h2>
-              <p className="text-[10px] uppercase tracking-widest text-zinc-500 text-center mb-8 italic">Veuillez choisir votre mode de règlement</p>
+              <h2 className="font-serif text-2xl mb-8 text-center">Paiement</h2>
 
               <div className="space-y-4">
                 <button onClick={handleWhatsApp} className="w-full flex items-center gap-4 p-4 border border-zinc-100 dark:border-white/5 hover:bg-zinc-50 dark:hover:bg-white/5 transition-all group rounded-xl text-left">
@@ -191,15 +199,15 @@ export const Cart = () => {
                 </button>
 
                 <button 
-                  onClick={handleFedaPay} 
+                  onClick={handlePaystack} 
                   className="w-full flex items-center gap-4 p-4 border border-zinc-100 dark:border-white/5 hover:bg-zinc-50 dark:hover:bg-white/5 transition-all group rounded-xl text-left"
                 >
                   <div className="p-3 bg-gold/10 text-gold rounded-full group-hover:scale-110 transition-transform">
                     <CreditCard size={24} />
                   </div>
                   <div>
-                    <p className="font-serif text-lg">Paiement Mobile Money</p>
-                    <p className="text-[10px] uppercase text-zinc-500">MTN, Airtel & Cartes Bancaires</p>
+                    <p className="font-serif text-lg">Mobile Money / Carte</p>
+                    <p className="text-[10px] uppercase text-zinc-500">Paiement via Paystack</p>
                   </div>
                 </button>
               </div>
