@@ -20,16 +20,10 @@ export const Cart = () => {
     transaction: {
       amount: total,
       description: `Commande Élégance Montre - ${user?.email}`,
-    },
-    customer: {
-      email: user?.email || '',
-      lastname: user?.email?.split('@')[0] || 'Client',
     }
   };
 
-  // --- SAUVEGARDE DANS SUPABASE ---
   const saveOrder = async (method: string) => {
-    console.log("Tentative de sauvegarde Supabase pour:", method);
     try {
       const { error } = await supabase
         .from('Commande')
@@ -42,14 +36,12 @@ export const Cart = () => {
         }]);
 
       if (error) {
-        console.error("Détail erreur Supabase:", error);
-        toast.error("Erreur lors de l'enregistrement de la commande.");
+        console.error("Erreur Supabase:", error);
+        toast.error("Erreur lors de l'enregistrement.");
         return false;
       }
-      console.log("Sauvegarde réussie dans Supabase");
       return true;
     } catch (err) {
-      console.error("Erreur système Supabase:", err);
       return false;
     }
   };
@@ -57,65 +49,37 @@ export const Cart = () => {
   const handleWhatsApp = async () => {
     const success = await saveOrder('whatsapp');
     if (!success) return;
-
     const myPhoneNumber = "242068518085";
     const itemsDescription = items.map(item => `• *${item.name}* (x${item.quantity})`).join('%0A');
     const message = `*COMMANDE PRESTIGE*%0A%0AJe souhaite valider ma commande :%0A${itemsDescription}%0A%0A*TOTAL : ${total.toLocaleString()} €*`;
-    
     window.open(`https://wa.me/${myPhoneNumber}?text=${message}`, '_blank');
     setShowCheckoutModal(false);
   };
 
-  // --- FONCTION FEDAPAY AVEC LE FIX "NEW" ---
+  // --- NOUVELLE MÉTHODE FEDAPAY SANS BUG ---
   const handleFedaPay = async () => {
-    console.log("--- BOUTON FEDAPAY CLIQUÉ ---");
-    const FedaPay = (window as any).FedaPay;
-    
-    if (!FedaPay) {
-      console.error("FedaPay non trouvé sur window");
-      toast.error("Le module de paiement n'est pas chargé.");
-      return;
-    }
-
     const success = await saveOrder('fedapay');
     if (!success) return;
-    
+
     setShowCheckoutModal(false);
+    toast.loading("Redirection vers le paiement sécurisé...");
 
-    try {
-      console.log("Tentative d'instanciation avec 'new FedaPay.checkout'...");
-      
-      // Utilisation du constructeur 'new' car FedaPay est exporté comme une classe
-      const checkout = new FedaPay.checkout({
-        public_key: fedaPayConfig.public_key,
-        transaction: fedaPayConfig.transaction,
-        customer: fedaPayConfig.customer,
-        onComplete: (data: any) => {
-          console.log("Paiement terminé", data);
-          toast.success("Paiement validé !");
-        }
-      });
+    // On construit l'URL de paiement manuellement pour éviter les erreurs de script
+    // C'est la méthode "Link" de FedaPay
+    const baseUrl = "https://checkout.fedapay.com/";
+    const params = new URLSearchParams({
+      public_key: fedaPayConfig.public_key,
+      amount: total.toString(),
+      description: fedaPayConfig.transaction.description,
+      email: user?.email || '',
+      callback_url: window.location.origin + "/profile", // Où le client revient après
+      cancel_url: window.location.origin + "/cart",     // S'il annule
+    });
 
-      console.log("Appel de .open()");
-      checkout.open();
-
-    } catch (error) {
-      console.error("Erreur avec 'new FedaPay.checkout':", error);
-      
-      // Solution de repli si la structure est différente
-      try {
-        console.log("Repli : Tentative via FedaPay.init()");
-        FedaPay.init({
-          public_key: fedaPayConfig.public_key,
-          transaction: fedaPayConfig.transaction,
-          customer: fedaPayConfig.customer
-        });
-        FedaPay.open();
-      } catch (lastError) {
-        console.error("Échec de toutes les méthodes:", lastError);
-        toast.error("Le service de paiement est indisponible actuellement.");
-      }
-    }
+    // On redirige l'utilisateur
+    setTimeout(() => {
+      window.location.href = `${baseUrl}${fedaPayConfig.public_key}?${params.toString()}`;
+    }, 1000);
   };
 
   const startCheckout = () => {
@@ -218,13 +182,7 @@ export const Cart = () => {
                   </div>
                 </button>
 
-                <button 
-                  onClick={() => {
-                    console.log("CLIC SUR BOUTON FEDAPAY");
-                    handleFedaPay();
-                  }} 
-                  className="w-full flex items-center gap-4 p-4 border border-zinc-100 dark:border-white/5 hover:bg-zinc-50 dark:hover:bg-white/5 transition-all group rounded-xl text-left"
-                >
+                <button onClick={handleFedaPay} className="w-full flex items-center gap-4 p-4 border border-zinc-100 dark:border-white/5 hover:bg-zinc-50 dark:hover:bg-white/5 transition-all group rounded-xl text-left">
                   <div className="p-3 bg-gold/10 text-gold rounded-full group-hover:scale-110 transition-transform">
                     <CreditCard size={24} />
                   </div>
