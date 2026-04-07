@@ -14,6 +14,7 @@ export const Cart = () => {
   
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
+  // Configuration FedaPay
   const fedaPayConfig = {
     public_key: 'pk_sandbox_L5iZakQd_tp4chTEDkySrXtO',
     transaction: {
@@ -26,6 +27,7 @@ export const Cart = () => {
     }
   };
 
+  // --- SAUVEGARDE DANS SUPABASE ---
   const saveOrder = async (method: string) => {
     console.log("Tentative de sauvegarde Supabase pour:", method);
     try {
@@ -64,42 +66,55 @@ export const Cart = () => {
     setShowCheckoutModal(false);
   };
 
+  // --- FONCTION FEDAPAY AVEC LE FIX "NEW" ---
   const handleFedaPay = async () => {
     console.log("--- BOUTON FEDAPAY CLIQUÉ ---");
-    const fedaPayInstance = (window as any).FedaPay;
-    console.log("Instance FedaPay au moment du clic :", fedaPayInstance);
+    const FedaPay = (window as any).FedaPay;
     
-    if (!fedaPayInstance) {
-      console.error("ERREUR : window.FedaPay est introuvable");
+    if (!FedaPay) {
+      console.error("FedaPay non trouvé sur window");
       toast.error("Le module de paiement n'est pas chargé.");
       return;
     }
 
     const success = await saveOrder('fedapay');
-    if (!success) {
-      console.log("Arrêt car échec Supabase");
-      return;
-    }
+    if (!success) return;
     
     setShowCheckoutModal(false);
 
     try {
-      console.log("Initialisation du widget FedaPay...");
-      const checkout = fedaPayInstance.checkout({
+      console.log("Tentative d'instanciation avec 'new FedaPay.checkout'...");
+      
+      // Utilisation du constructeur 'new' car FedaPay est exporté comme une classe
+      const checkout = new FedaPay.checkout({
         public_key: fedaPayConfig.public_key,
         transaction: fedaPayConfig.transaction,
         customer: fedaPayConfig.customer,
         onComplete: (data: any) => {
-          console.log("Paiement terminé avec succès", data);
-          toast.success("Paiement réussi !");
+          console.log("Paiement terminé", data);
+          toast.success("Paiement validé !");
         }
       });
 
-      console.log("Ouverture du widget...");
+      console.log("Appel de .open()");
       checkout.open();
+
     } catch (error) {
-      console.error("CATASTROPHE FedaPay:", error);
-      toast.error("Erreur technique lors du lancement du paiement.");
+      console.error("Erreur avec 'new FedaPay.checkout':", error);
+      
+      // Solution de repli si la structure est différente
+      try {
+        console.log("Repli : Tentative via FedaPay.init()");
+        FedaPay.init({
+          public_key: fedaPayConfig.public_key,
+          transaction: fedaPayConfig.transaction,
+          customer: fedaPayConfig.customer
+        });
+        FedaPay.open();
+      } catch (lastError) {
+        console.error("Échec de toutes les méthodes:", lastError);
+        toast.error("Le service de paiement est indisponible actuellement.");
+      }
     }
   };
 
