@@ -27,16 +27,16 @@ export const Cart = () => {
     }
   };
 
-  // --- ICI : LA FONCTION MISE À JOUR POUR TA TABLE SUPABASE ---
+  // --- SAUVEGARDE DANS SUPABASE ---
   const saveOrder = async (method: string) => {
     try {
       const { error } = await supabase
-        .from('Commande') // Nom exact de ta table
+        .from('Commande')
         .insert([{
-          userId: user?.email, // Colonne userId (vue sur ta capture)
-          total: total,        // Colonne total (vue sur ta capture)
-          statut: method === 'fedapay' ? 'payé_en_attente' : 'en_attente', // Colonne statut
-          items: items,        // Colonne items
+          userId: user?.email,
+          total: total,
+          statut: method === 'fedapay' ? 'payé_en_attente' : 'en_attente',
+          items: items,
           payment_method: method
         }]);
 
@@ -64,41 +64,39 @@ export const Cart = () => {
     setShowCheckoutModal(false);
   };
 
-  // --- FONCTION CORRIGÉE AVEC BOUCLE D'ATTENTE ---
+  // --- FONCTION FEDAPAY OPTIMISÉE ---
   const handleFedaPay = async () => {
-    let fedaPayInstance = (window as any).FedaPay;
+    // On récupère l'objet FedaPay que ta console a bien détecté
+    const fedaPayInstance = (window as any).FedaPay;
     
-    // Si FedaPay n'est pas encore prêt, on attend jusqu'à 3 secondes
-    if (!fedaPayInstance || typeof fedaPayInstance.checkout !== 'function') {
-      toast.info("Initialisation du paiement sécurisé...");
-      
-      for (let i = 0; i < 6; i++) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        fedaPayInstance = (window as any).FedaPay;
-        if (fedaPayInstance && typeof fedaPayInstance.checkout === 'function') break;
-      }
-    }
-
-    if (!fedaPayInstance || typeof fedaPayInstance.checkout !== 'function') {
-      toast.error("Le module de paiement n'a pas pu charger. Vérifiez votre connexion.");
+    if (!fedaPayInstance) {
+      toast.error("Le module de paiement n'est pas encore prêt. Patientez un instant.");
       return;
     }
 
+    // On enregistre d'abord la commande dans Supabase
     const success = await saveOrder('fedapay');
     if (!success) return;
     
     setShowCheckoutModal(false);
 
     try {
+      // On initialise le checkout
       const checkout = fedaPayInstance.checkout({
         public_key: fedaPayConfig.public_key,
         transaction: fedaPayConfig.transaction,
-        customer: fedaPayConfig.customer
+        customer: fedaPayConfig.customer,
+        onComplete: (data: any) => {
+          console.log("Paiement terminé", data);
+          toast.success("Paiement enregistré !");
+        }
       });
+      
+      // On force l'ouverture
       checkout.open();
     } catch (error) {
       console.error("FedaPay error:", error);
-      toast.error("Le service de paiement n'a pas pu démarrer.");
+      toast.error("Erreur lors de l'ouverture du module de paiement.");
     }
   };
 
