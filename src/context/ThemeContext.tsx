@@ -1,34 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon } from 'lucide-react';
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isDark, setIsDark] = useState(false);
-
+  // On ne crée pas de bouton, on gère tout en arrière-plan
+  
   useEffect(() => {
-    const hour = new Date().getHours();
-    const shouldBeDark = hour >= 18 || hour < 6;
-    setIsDark(shouldBeDark);
-    if (shouldBeDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    const applyTheme = () => {
+      const hour = new Date().getHours();
+      const isNight = hour >= 18 || hour < 6;
+      
+      // Optionnel : On vérifie aussi si l'utilisateur a réglé son PC en mode sombre
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+      // Si c'est la nuit OU si le système est en mode sombre, on active le dark mode
+      if (isNight || prefersDark) {
+        document.documentElement.classList.add('dark');
+        // On peut aussi forcer le background du body pour éviter les flashs blancs
+        document.body.style.backgroundColor = '#09090b'; // zinc-950
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.body.style.backgroundColor = '#ffffff';
+      }
+    };
+
+    applyTheme();
+
+    // Petit plus : Si l'utilisateur change son thème système alors qu'il est sur le site
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => applyTheme();
+    mediaQuery.addEventListener('change', handleChange);
+
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle('dark');
-  };
-
   return (
-    <div className={isDark ? 'dark' : ''}>
-      <button 
-        onClick={toggleTheme}
-        className="fixed bottom-4 right-4 z-50 p-3 bg-gold text-luxury-black rounded-full shadow-lg hover:scale-110 transition-transform"
-      >
-        {isDark ? <Sun size={20} /> : <Moon size={20} />}
-      </button>
+    <>
       {children}
-    </div>
+    </>
   );
 };
