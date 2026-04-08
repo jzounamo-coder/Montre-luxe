@@ -161,8 +161,21 @@ export const Home = () => {
                 <span className="text-gold">Élégance Montre</span>
               </h2>
               <div className="space-y-6 text-zinc-600 dark:text-zinc-400 leading-relaxed text-sm uppercase tracking-wider">
-                <p>Depuis plus d'un siècle, Élégance Montre s'est imposée comme la référence absolue de la haute horlogerie au Congo.</p>
+                <p>Depuis plus d'un siècle, Élégance Montre s'est imposée comme la référence absolue de la haute horlogerie au Congo defiant tout concurance.</p>
                 <p>Chaque montre de notre collection est le fruit d'une sélection rigoureuse.</p>
+                <p>Fondée en 2023, Élégance Montre est née d'une ambition simple : faire de chaque seconde un moment de distinction.
+
+Une Vision, Une Signature
+
+Depuis nos débuts, nous croyons qu'une montre dépasse sa fonction première. Elle est le témoin de vos succès, le reflet de votre style et le symbole de votre rigueur. En trois ans, nous avons bâti une collection exigeante où la précision technique rencontre l'esthétique du luxe.
+
+L'Engagement Prestige
+
+Curateurs d'Excellence : Chaque pièce est rigoureusement sélectionnée pour sa fiabilité et son caractère unique.
+
+Expérience Digitale : En 2026, nous redéfinissons l'achat horloger avec une plateforme fluide, sécurisée et exclusivement pensée pour notre clientèle.
+
+Élégance Montre : Portez plus qu'une heure, affirmez votre histoire.</p>
               </div>
             </motion.div>
           </div>

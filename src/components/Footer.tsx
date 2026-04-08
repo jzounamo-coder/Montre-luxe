@@ -13,7 +13,7 @@ export const Footer = () => {
               <span className="text-[10px] tracking-[0.5em] uppercase text-gold font-bold">Montre</span>
             </Link>
             <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-loose uppercase tracking-[0.2em] max-w-xs">
-              Le temps est le luxe ultime. Nous vous aidons à le capturer avec élégance et précision au Congo depuis 1924.
+              Le temps est le luxe ultime. Nous vous aidons à le capturer avec élégance et précision au Congo depuis 2023.
             </p>
           </div>
 
@@ -45,7 +45,6 @@ export const Footer = () => {
             © 2026 Élégance Montre. Tous droits réservés.
           </p>
           <div className="flex space-x-10 text-[9px] uppercase tracking-[0.4em] text-zinc-500 dark:text-zinc-400">
-            <Link to="/admin" className="hover:text-gold transition-colors duration-300 font-bold">Dashboard</Link>
             <a href="https://instagram.com/elegance_montre" className="hover:text-gold transition-colors duration-300">Instagram</a>
             <a href="https://tiktok.com/@elegance_montre" className="hover:text-gold transition-colors duration-300">TikTok</a>
             <a href="#" className="hover:text-gold transition-colors duration-300">Facebook</a>
