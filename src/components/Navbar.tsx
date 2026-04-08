@@ -125,8 +125,6 @@ export const Navbar = () => {
                           <Settings size={14} /> Tableau de Bord
                         </Link>
                       )}
-
-                      // cettte option doit etre activer pour les utilisateurs normaux qui veulent ajouter un compte pour leur famille ou amis
                       <button onClick={() => navigate('/login')} className="w-full flex items-center gap-3 px-6 py-3 text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors">
                         <UserPlus size={14} /> Ajouter un compte
                       </button>
