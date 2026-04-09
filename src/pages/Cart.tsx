@@ -32,7 +32,6 @@ export const Cart = () => {
       return true;
     } catch (err) {
       console.error("Erreur Supabase:", err);
-      // On ne bloque pas tout, on prévient juste
       return false; 
     }
   };
@@ -45,11 +44,8 @@ export const Cart = () => {
     setShowCheckoutModal(false);
   };
 
-  // --- FONCTION PAYSTACK VERSION ULTIME ---
   const handlePaystack = () => {
     setIsLoadingPaystack(true);
-
-    // 1. On vérifie si le script existe déjà, sinon on le crée
     if (!(window as any).PaystackPop) {
       const script = document.createElement("script");
       script.src = "https://js.paystack.co/v1/inline.js";
@@ -64,7 +60,6 @@ export const Cart = () => {
   const setupAndOpenPaystack = () => {
     setIsLoadingPaystack(false);
     
-    // On définit les fonctions de rappel à part pour éviter l'erreur "Attribute callback..."
     const onPaymentSuccess = (response: any) => {
       console.log("Succès:", response);
       toast.success("Paiement validé !");
@@ -82,9 +77,9 @@ export const Cart = () => {
         key: PAYSTACK_PUBLIC_KEY,
         email: user?.email || 'client@mail.com',
         amount: Math.round(total * 100),
-        currency: 'USD', // Garder USD pour le mode test
+        currency: 'USD',
         ref: 'PRESTIGE-' + Math.floor(Math.random() * 1000000000 + 1),
-        callback: onPaymentSuccess, // On passe la référence de la fonction
+        callback: onPaymentSuccess,
         onClose: onPaymentClose
       });
 
@@ -100,7 +95,8 @@ export const Cart = () => {
       <div className="min-h-screen flex flex-col items-center justify-center pt-20 px-4">
         <ShoppingBag size={64} className="text-zinc-200 dark:text-zinc-800 mb-6" />
         <h2 className="text-3xl font-serif mb-4">Votre panier est vide</h2>
-        <Link to="/catalog" className="luxury-button">Découvrir les collections</Link>
+        {/* CORRECTION ICI : Redirection vers l'ID catalog de la Home */}
+        <Link to="/#catalog" className="luxury-button">Découvrir les collections</Link>
       </div>
     );
   }

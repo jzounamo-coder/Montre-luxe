@@ -46,3 +46,6 @@
     @apply bg-gradient-to-br from-luxury-black via-luxury-surface to-luxury-navy;
   }
 }
+html {
+  scroll-behavior: smooth;
+}
