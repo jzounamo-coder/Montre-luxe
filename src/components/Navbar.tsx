@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ShoppingBag, User, Menu, X, LogOut, Loader2, Settings, ShieldCheck, UserPlus, Moon, Sun } from 'lucide-react';
+import { Search, ShoppingBag, User, Menu, X, LogOut, Loader2, Settings, UserPlus, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { Link, useNavigate } from 'react-router-dom';
 
 export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false); // État pour le menu profil
-  const [isDark, setIsDark] = useState(false); // État pour le mode sombre
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
   const [navSearch, setNavSearch] = useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   
@@ -17,7 +17,6 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Fermer le menu si on clique ailleurs
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
@@ -95,7 +94,7 @@ export const Navbar = () => {
               )}
             </Link>
 
-            {/* User Profile Dropdown */}
+            {/* User Profile */}
             <div className="relative" ref={profileRef}>
               <button 
                 onClick={() => isAuthenticated ? setIsProfileOpen(!isProfileOpen) : navigate('/login')}
@@ -112,13 +111,11 @@ export const Navbar = () => {
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     className="absolute right-0 mt-4 w-72 bg-white dark:bg-luxury-surface border border-zinc-100 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden py-4"
                   >
-                    {/* Infos utilisateur */}
                     <div className="px-6 py-4 border-b border-zinc-100 dark:border-white/5">
                       <p className="text-[9px] uppercase tracking-widest text-zinc-400 mb-1">Connecté en tant que</p>
                       <p className="text-sm font-medium truncate text-gold">{user?.email}</p>
                     </div>
 
-                    {/* Options du menu */}
                     <div className="py-2">
                       {isAdmin && (
                         <Link to="/admin" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-3 px-6 py-3 text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors text-gold font-bold">
@@ -128,32 +125,19 @@ export const Navbar = () => {
                       <button onClick={() => navigate('/login')} className="w-full flex items-center gap-3 px-6 py-3 text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors">
                         <UserPlus size={14} /> Ajouter un compte
                       </button>
-                       
-
-                      {/* Séparateur pour le Mode Sombre intégré */}
+                      
                       <div className="mx-6 my-2 border-t border-zinc-100 dark:border-white/5"></div>
                       
-                      <button 
-                        onClick={toggleDarkMode}
-                        className="w-full flex items-center justify-between px-6 py-3 text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors"
-                      >
+                      <button onClick={toggleDarkMode} className="w-full flex items-center justify-between px-6 py-3 text-[10px] uppercase tracking-widest hover:bg-zinc-50 dark:hover:bg-white/5 transition-colors">
                         <div className="flex items-center gap-3">
                           {isDark ? <Sun size={14} /> : <Moon size={14} />}
                           <span>Mode {isDark ? 'Clair' : 'Sombre'}</span>
                         </div>
-                        <div className={`w-8 h-4 rounded-full relative transition-colors ${isDark ? 'bg-gold' : 'bg-zinc-300'}`}>
-                           <div className={`absolute top-1 w-2 h-2 bg-white rounded-full transition-all ${isDark ? 'left-5' : 'left-1'}`}></div>
-                        </div>
                       </button>
                     </div>
 
-                    {/* Déconnexion */}
                     <div className="mt-2 pt-2 border-t border-zinc-100 dark:border-white/5">
-                      <button 
-                        onClick={handleLogout}
-                        disabled={isLoggingOut}
-                        className="w-full flex items-center gap-3 px-6 py-4 text-[10px] uppercase tracking-widest text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                      >
+                      <button onClick={handleLogout} disabled={isLoggingOut} className="w-full flex items-center gap-3 px-6 py-4 text-[10px] uppercase tracking-widest text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
                         {isLoggingOut ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}
                         DÉCONNEXION
                       </button>
@@ -163,14 +147,51 @@ export const Navbar = () => {
               </AnimatePresence>
             </div>
 
-            <button className="md:hidden" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+            {/* Burger Button */}
+            <button className="md:hidden text-luxury-black dark:text-white" onClick={() => setIsMenuOpen(!isMenuOpen)}>
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu ... (garde ton code existant ici) */}
+      {/* Mobile Menu - CORRIGÉ ICI */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden bg-white dark:bg-luxury-black border-b border-zinc-100 dark:border-zinc-800 overflow-hidden"
+          >
+            <div className="px-6 py-8 space-y-6 flex flex-col">
+              <a href="/#catalog" onClick={() => setIsMenuOpen(false)} className="text-[12px] uppercase tracking-[0.4em] font-medium border-b border-zinc-50 dark:border-white/5 pb-2">
+                Catalogue
+              </a>
+              <a href="/#history" onClick={() => setIsMenuOpen(false)} className="text-[12px] uppercase tracking-[0.4em] font-medium border-b border-zinc-50 dark:border-white/5 pb-2">
+                L'Histoire
+              </a>
+              {isAuthenticated && (
+                <Link to="/collection" onClick={() => setIsMenuOpen(false)} className="text-[12px] uppercase tracking-[0.4em] font-medium text-gold border-b border-zinc-50 dark:border-white/5 pb-2">
+                  Ma Collection
+                </Link>
+              )}
+              
+              {/* Recherche Mobile */}
+              <form onSubmit={handleSearchSubmit} className="relative mt-4">
+                <input 
+                  type="text" placeholder="RECHERCHER..." value={navSearch}
+                  onChange={(e) => setNavSearch(e.target.value)}
+                  className="w-full bg-zinc-100 dark:bg-white/5 border-none rounded-xl py-4 px-6 text-[10px] uppercase tracking-widest outline-none"
+                />
+                <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 text-gold">
+                  <Search size={18} />
+                </button>
+              </form>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 };
