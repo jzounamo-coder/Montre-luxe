@@ -29,12 +29,14 @@ const ScrollManager = () => {
       const id = hash.replace('#', '');
       const element = document.getElementById(id);
       if (element) {
+
         // Petit délai pour laisser React charger la page Home
         setTimeout(() => {
           element.scrollIntoView({ behavior: 'smooth' });
         }, 150);
       }
     } else {
+      
       // Sinon, on remonte tout en haut quand on change de page
       window.scrollTo(0, 0);
     }
